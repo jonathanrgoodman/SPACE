@@ -1,0 +1,776 @@
+---
+title: "SPACE dataset analysis"
+output: html_notebook
+---
+
+```{r}
+#research questions:
+
+#1.	Which are the primary reasons for the placement of trust, and do these reasons vary by demographics and domain?
+#2.	Does stated general trust, and do demographic characteristics, predict for a composite domain-specific trust score?
+#3.	Does a composite trust score predict for use of technology in the health sphere?
+#4.	Is trust in tech companies a predictor for using technology for health reasons?
+#5.	Is trust in England’s National Health Service (NHS) a predictor for using technology for health reasons?
+
+ 
+```
+
+
+```{r}
+#separate and tabulate demographic data
+demographics <- SPACE.data[,95:100]
+
+#number by participant
+demographics$participant <- c(1:nrow(demographics))
+
+#slot in variable values (see master dataset)
+library(tidyverse)
+variable.values$Variable.Values[variable.values$Variable.Values==""] <- NA
+variable.values <- variable.values %>% fill(Variable.Values, .direction = "down")
+variable.values.wide <- variable.values %>%
+    pivot_wider(names_from = Variable.Values, values_from = X.1)
+
+demographics.table <- list(Age=table(as.factor(demographics$Age)))
+row.names(demographics.table$Age) <- variable.values.wide$Age[-1]
+
+demographics.table$Gender <- table(as.factor(demographics$Gender))
+row.names(demographics.table$Gender) <- variable.values.wide$Gender[2:3]
+
+demographics.table$Education <- table(as.factor(demographics$Education))
+row.names(demographics.table$Education) <- variable.values.wide$Education[2:5]
+
+demographics.table$Relationship <- table(as.factor(demographics$Relationship))
+row.names(demographics.table$Relationship) <- variable.values.wide$Relationship[2:6]
+
+demographics.table$Children <- table(as.factor(demographics$Children))
+row.names(demographics.table$Children) <- variable.values.wide$Children[2:3]
+
+demographics.table$Caring <- table(as.factor(demographics$Caring))
+row.names(demographics.table$Caring) <- variable.values.wide$Caring[2:3]
+
+demographics.table
+
+```
+
+```{r}
+#plot
+
+library(ggplot2)
+
+demographics.histograms <- lapply(names(demographics.table), function(name) {
+    df <- as.data.frame(demographics.table[[name]])
+    ggplot(df, aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = name, x = "", y = "")
+})
+
+demographics.histograms
+
+```
+
+```{r}
+#general trust analysis
+
+trust.table <- list(General=table(as.factor(SPACE.data$Q2)))
+row.names(trust.table$General) <- variable.values.wide$Q2[2:6]
+
+SPACE.data$Q2 <- factor(SPACE.data$Q2, ordered=TRUE)
+SPACE.data$Age <- as.factor(SPACE.data$Age)
+SPACE.data$Gender <- as.factor(SPACE.data$Gender)
+SPACE.data$Education <- as.factor(SPACE.data$Education)
+SPACE.data$Relationship <- as.factor(SPACE.data$Relationship)
+SPACE.data$Children <- as.factor(SPACE.data$Children)
+SPACE.data$Caring <- as.factor(SPACE.data$Caring)
+
+
+library(sjPlot)
+library(brms)
+
+trust.model.1 <- brm(
+  formula = Q2 ~ Age + Gender + Education + Relationship,
+  data = SPACE.data,
+  family = cumulative(link = "logit"),
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+```
+```{r}
+#plot general trust model
+
+summary(trust.model.1)
+plot_model(trust.model.1, type = "est", show.values = TRUE)
+```
+```{r}
+#plot general trust histogram
+
+    ggplot(as.data.frame(trust.table$General), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted?", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+```
+
+```{r}
+#plot out relationship and general trust
+
+#married
+
+    ggplot(as.data.frame(table(SPACE.data$Q2[SPACE.data$Relationship=="1"])), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted? (Married)", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+
+#widowed
+
+    ggplot(as.data.frame(table(SPACE.data$Q2[SPACE.data$Relationship=="2"])), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted? (Widowed)", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+    
+#divorced
+
+    ggplot(as.data.frame(table(SPACE.data$Q2[SPACE.data$Relationship=="3"])), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted? (Divorced)", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+
+#separated
+    
+    ggplot(as.data.frame(table(SPACE.data$Q2[SPACE.data$Relationship=="4"])), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted? (Separated)", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+    
+#single
+    
+      ggplot(as.data.frame(table(SPACE.data$Q2[SPACE.data$Relationship=="5"])), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can people be trusted? (Single)", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+    
+```
+```{r}
+#evaluate general trust against domain-specific trust variables
+
+#convert variables to factors
+SPACE.data[,60:62] <- lapply(SPACE.data[,60:62], as.factor)
+
+#plot by question
+
+#tech companies
+
+ggplot(as.data.frame(table(SPACE.data$Q90)), aes(x = Var1, y = Freq)) +
+    geom_bar(stat = "identity") +
+    labs(title = "Do you feel that you can generally trust health technology companies (like FitBit or Apple) with data about your health?", x="", y="") +
+    scale_x_discrete(labels = c("Definitely not", "Probably not", "Might or might not", "Probably", "Definitely")) +
+    theme_minimal() +
+    theme(
+        plot.title = element_text(size = 8),
+        axis.text.x = element_text(size = 10),
+    )
+
+#family
+
+ggplot(as.data.frame(table(SPACE.data$Q100.0)), aes(x = Var1, y = Freq)) +
+    geom_bar(stat = "identity") +
+    labs(title = "Do you feel that you can generally trust your family with data about your health?", x="", y="") +
+    scale_x_discrete(labels = c("Definitely not", "Probably not", "Might or might not", "Probably", "Definitely")) +
+    theme_minimal() +
+    theme(
+        plot.title = element_text(size = 8),
+        axis.text.x = element_text(size = 10),
+    )
+
+#NHS
+
+ggplot(as.data.frame(table(SPACE.data$Q89)), aes(x = Var1, y = Freq)) +
+    geom_bar(stat = "identity") +
+    labs(title = "Do you feel that you can generally trust the NHS with data about your health?", x="", y="") +
+    scale_x_discrete(labels = c("Definitely not", "Probably not", "Might or might not", "Probably", "Definitely")) +
+    theme_minimal() +
+    theme(
+        plot.title = element_text(size = 8),
+        axis.text.x = element_text(size = 10),
+    )
+
+composite.trust.df <- cbind(as.data.frame(trust.table), as.data.frame(family.trust.table), as.data.frame(nhs.trust.table), as.data.frame(tech.trust.table))
+composite.trust.df <- composite.trust.df[,c(1,2,4,6,8)]
+colnames(composite.trust.df) <- c("Trust level","General","Family","NHS","Tech companies")
+composite.trust.df$General <- round((composite.trust.df$General/sum(composite.trust.df$General))*100, 2)
+composite.trust.df$Family <- round((composite.trust.df$Family/sum(composite.trust.df$Family))*100, 2)
+composite.trust.df$NHS <- round((composite.trust.df$NHS/sum(composite.trust.df$NHS))*100, 2)
+composite.trust.df$`Tech companies` <- round((composite.trust.df$`Tech companies`/sum(composite.trust.df$`Tech companies`))*100, 2)
+
+```
+```{r}
+#trust subtype models
+
+#tech
+
+SPACE.data$Q90 <- factor(SPACE.data$Q90, ordered=TRUE)
+
+
+trust.tech.model.1 <- brm(
+  formula = Q90 ~ Age + Gender + Education + Relationship,
+  data = SPACE.data,
+  family = cumulative(link = "logit"),
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+
+```
+
+```{r}
+#plot tech trust model
+
+summary(trust.tech.model.1)
+plot_model(trust.tech.model.1, type = "est", show.values = TRUE)
+```
+```{r}
+#family
+
+SPACE.data$Q100.0 <- factor(SPACE.data$Q100.0, ordered=TRUE)
+
+trust.family.model.1 <- brm(
+  formula = Q100.0 ~ Age + Gender + Education + Relationship,
+  data = SPACE.data,
+  family = cumulative(link = "logit"),
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+#plot family trust model
+
+summary(trust.family.model.1)
+plot_model(trust.family.model.1, type = "est", show.values = TRUE)
+
+```
+```{r}
+#NHS
+
+SPACE.data$Q89 <- factor(SPACE.data$Q89, ordered=TRUE)
+
+trust.NHS.model.1 <- brm(
+  formula = Q89 ~ Age + Gender + Education + Relationship,
+  data = SPACE.data,
+  family = cumulative(link = "logit"),
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+#plot NHS trust model
+
+summary(trust.NHS.model.1)
+plot_model(trust.NHS.model.1, type = "est", show.values = TRUE)
+```
+
+```{r}
+#analysis by domains
+
+#add participant column
+
+SPACE.data$Participant <- c(1:nrow(SPACE.data))
+
+#convert data from wide to long format
+
+SPACE.data[] <- lapply(SPACE.data, as.factor)
+SPACE.data.long <- pivot_longer(SPACE.data, cols=Q76_1:Q54, names_to="Question", values_to="Response")
+
+#convert NAs to 0s
+library(dplyr)
+SPACE.data.long <- SPACE.data.long %>% mutate_all(~ ifelse(is.na(.), 0, .))
+
+#relevel response column
+SPACE.data.long$Response <- factor(SPACE.data.long$Response, levels=c(0,1))
+
+#plot responses to Q76 ("In general, when you think about whether you can trust someone, which of these reasons would you say were the three most important?")
+
+#remove 0s in separate data frame for plotting
+
+SPACE.data.long.1 <- subset(SPACE.data.long, SPACE.data.long$Response=="1")
+
+#plot
+
+ggplot(subset(SPACE.data.long.1, Question=="Q76_1" | Question=="Q76_2"| Question=="Q76_3" | Question=="Q76_4" | Question=="Q76_5"| Question=="Q76_6" | Question=="Q76_7"| Question=="Q76_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q76_1" = "#EDF3FB", "Q76_2" = "grey", "Q76_3" = "black", "Q76_4" = "red", "Q76_5" = "green", "Q76_6" = "yellow", "Q76_7" = "blue", "Q76_8" = "orange"),
+                    labels = c("Q76_1" = "Intentions", "Q76_2" = "Skilled", "Q76_3" = "Responsible", "Q76_4" = "Reliable", "Q76_5" = "Non-exploitative", "Q76_6" = "Transparent", "Q76_7" = "Shared values", "Q76_8" = "Familiar"))
+
+ggplot(subset(SPACE.data.long.1, Question %in% c("Q76_1", "Q76_2", "Q76_3", "Q76_4", "Q76_5", "Q76_6", "Q76_7", "Q76_8")), 
+       aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  geom_text(stat = 'count', aes(label = ..count..), position = position_dodge(width = 0.9), vjust = -0.5) +
+  theme_minimal() +
+  labs(title = "Reasons for trust",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q76_1" = "#EDF3FB", "Q76_2" = "grey", "Q76_3" = "black", "Q76_4" = "red", "Q76_5" = "green", "Q76_6" = "yellow", "Q76_7" = "blue", "Q76_8" = "orange"),
+                    labels = c("Q76_1" = "Intentions", "Q76_2" = "Skilled", "Q76_3" = "Responsible", "Q76_4" = "Reliable", "Q76_5" = "Non-exploitative", "Q76_6" = "Transparent", "Q76_7" = "Shared values", "Q76_8" = "Familiar"))
+
+```
+
+```{r}
+#evaluate by demographic group using brms model with participant as random effect
+
+#convert demographic variables to factors
+
+SPACE.data.long$Age <- factor(SPACE.data.long$Age, levels=c(2:7))
+SPACE.data.long$Gender <- as.factor(SPACE.data.long$Gender)
+SPACE.data.long$Education <- as.factor(SPACE.data.long$Education)
+SPACE.data.long$Relationship <- as.factor(SPACE.data.long$Relationship)
+
+trust.model.2 <- brm(Response~(Question-1)*(Age+Gender+Education+Relationship-1)+(1|Participant), 
+    prior = c(set_prior("normal(0, 5)", class = "b")),
+    data=subset(SPACE.data.long, Question=="Q76_1" | Question=="Q76_2"| Question=="Q76_3" | Question=="Q76_4" | Question=="Q76_5"| Question=="Q76_6" | Question=="Q76_7"| Question=="Q76_8"), family=bernoulli, chains = 6)
+
+summary(trust.model.2)
+```
+
+
+```{r}
+#by domain (research questions 2a and 2b)
+
+#family
+
+family.trust.table <- list(General=table(as.factor(SPACE.data$Q100.0)))
+row.names(family.trust.table$General) <- variable.values.wide$Q100.0[2:6]
+
+    ggplot(as.data.frame(family.trust.table$General), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can your family be trusted with your health data?", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+
+ggplot(subset(SPACE.data.long.1, Question=="Q100_1" | Question=="Q100_2"| Question=="Q100_3" | Question=="Q100_4" | Question=="Q100_5"| Question=="Q100_6" | Question=="Q100_7"| Question=="Q100_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, family",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q100_1" = "#EDF3FB", "Q100_2" = "grey", "Q100_3" = "black", "Q100_4" = "red", "Q100_5" = "green", "Q100_6" = "yellow", "Q100_7" = "blue", "Q100_8" = "orange"),
+                    labels = c("Q100_1" = "Intentions", "Q100_2" = "Skilled", "Q100_3" = "Responsible", "Q100_4" = "Reliable", "Q100_5" = "Non-exploitative", "Q100_6" = "Transparent", "Q100_7" = "Shared values", "Q100_8" = "Familiar"))
+
+#NHS
+
+nhs.trust.table <- list(General=table(as.factor(SPACE.data$Q89)))
+row.names(nhs.trust.table$General) <- variable.values.wide$Q89[2:6]
+
+    ggplot(as.data.frame(nhs.trust.table$General), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can the NHS be trusted with your health data?", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+
+ggplot(subset(SPACE.data.long.1, Question=="Q101_1" | Question=="Q101_2"| Question=="Q101_3" | Question=="Q101_4" | Question=="Q101_5"| Question=="Q101_6" | Question=="Q101_7"| Question=="Q101_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, NHS",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q101_1" = "#EDF3FB", "Q101_2" = "grey", "Q101_3" = "black", "Q101_4" = "red", "Q101_5" = "green", "Q101_6" = "yellow", "Q101_7" = "blue", "Q101_8" = "orange"),
+                    labels = c("Q101_1" = "Intentions", "Q101_2" = "Skilled", "Q101_3" = "Responsible", "Q101_4" = "Reliable", "Q101_5" = "Non-exploitative", "Q101_6" = "Transparent", "Q101_7" = "Shared values", "Q101_8" = "Familiar"))
+
+#tech companies
+
+tech.trust.table <- list(General=table(as.factor(SPACE.data$Q90)))
+row.names(tech.trust.table$General) <- variable.values.wide$Q90[2:6]
+
+    ggplot(as.data.frame(tech.trust.table$General), aes(x = Var1, y = Freq)) +
+        geom_bar(stat = "identity") +
+        labs(title = "Can tech companies be trusted with your health data?", x="", y="") +
+    scale_x_discrete(labels = c("Almost always not", "Usually not", "Can't choose", "Usually", "Almost always")) +
+    theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.text.x = element_text(size = 8),
+  )
+
+ggplot(subset(SPACE.data.long.1, Question=="Q94_1" | Question=="Q94_2"| Question=="Q94_3" | Question=="Q94_4" | Question=="Q94_5"| Question=="Q94_6" | Question=="Q94_7"| Question=="Q94_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, tech companies",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q94_1" = "#EDF3FB", "Q94_2" = "grey", "Q94_3" = "black", "Q94_4" = "red", "Q94_5" = "green", "Q94_6" = "yellow", "Q94_7" = "blue", "Q94_8" = "orange"),
+                    labels = c("Q94_1" = "Intentions", "Q94_2" = "Skilled", "Q94_3" = "Responsible", "Q94_4" = "Reliable", "Q94_5" = "Non-exploitative", "Q94_6" = "Transparent", "Q94_7" = "Shared values", "Q94_8" = "Familiar"))
+
+```
+
+```{r}
+#family trust model
+
+SPACE.data.long <- pivot_longer(SPACE.data, cols=Q76_1:Q54, names_to="Question", values_to="Response")
+
+SPACE.data.long <- SPACE.data.long %>% mutate_all(~ ifelse(is.na(.), 0, .))
+SPACE.data.long$Age <- factor(SPACE.data.long$Age, levels=c(2:7))
+SPACE.data.long$Gender <- as.factor(SPACE.data.long$Gender)
+SPACE.data.long$Education <- as.factor(SPACE.data.long$Education)
+SPACE.data.long$Relationship <- as.factor(SPACE.data.long$Relationship)
+
+
+trust.model.3 <- brm(Response~(Question-1)*(Age+Gender+Education+Relationship-1)+(1|Participant), 
+    prior = c(set_prior("normal(0, 5)", class = "b")),
+    data=subset(SPACE.data.long, Question=="Q100_1" | Question=="Q100_2"| Question=="Q100_3" | Question=="Q100_4" | Question=="Q100_5"| Question=="Q100_6" | Question=="Q100_7"| Question=="Q100_8"), family=bernoulli, chains = 6)
+
+summary(trust.model.3)
+```
+```{r}
+#NHS trust model
+
+trust.model.4 <- brm(Response~(Question-1)*(Age+Gender+Education+Relationship-1)+(1|Participant), 
+    prior = c(set_prior("normal(0, 5)", class = "b")),
+    data=subset(SPACE.data.long, Question=="Q101_1" | Question=="Q101_2"| Question=="Q101_3" | Question=="Q101_4" | Question=="Q101_5"| Question=="Q101_6" | Question=="Q101_7"| Question=="Q101_8"), family=bernoulli, chains = 6)
+
+summary(trust.model.4)
+```
+```{r}
+#tech company trust model
+
+trust.model.5 <- brm(Response~(Question-1)*(Age+Gender+Education+Relationship-1)+(1|Participant), 
+    prior = c(set_prior("normal(0, 5)", class = "b")),
+    data=subset(SPACE.data.long, Question=="Q94_1" | Question=="Q94_2"| Question=="94_3" | Question=="Q94_4" | Question=="Q94_5"| Question=="Q94_6" | Question=="Q94_7"| Question=="Q94_8"), family=bernoulli, chains = 6)
+
+summary(trust.model.5)
+```
+```{r}
+#Create composite to explore demographically (scale: 1-15 across trust sub-domains)
+
+SPACE.data$trust.composite <- as.numeric(SPACE.data$Q90)+as.numeric(SPACE.data$Q100.0)+as.numeric(SPACE.data$Q89)
+SPACE.data$trust.composite <- factor(SPACE.data$trust.composite, ordered=TRUE)
+
+trust.composite.model.1 <- brm(
+  formula = trust.composite ~ Q2 + Age + Gender + Education + Relationship,
+  data = SPACE.data,
+  family = cumulative(link = "logit"),
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+#plot composite trust model
+
+summary(trust.composite.model.1)
+plot_model(trust.composite.model.1, type = "est", show.values = TRUE)
+
+```
+```{r}
+#group by low composite trust (A: 1-5; B: 6-10; C: 11-15)
+
+SPACE.data$trust.group <- NA
+SPACE.data$trust.group[as.numeric(SPACE.data$trust.composite) < 6] <- "A"
+SPACE.data$trust.group[as.numeric(SPACE.data$trust.composite) > 5 & as.numeric(SPACE.data$trust.composite) < 11] <- "B"
+SPACE.data$trust.group[as.numeric(SPACE.data$trust.composite) > 10] <- "C"
+
+SPACE.data$trust.group <- as.factor(SPACE.data$trust.group)
+
+summary(SPACE.data$trust.group)
+
+```
+
+```{r}
+#recreate long format data frame and evaluate reasons for general trust by trust group
+
+SPACE.data[] <- lapply(SPACE.data, factor, ordered = FALSE)
+SPACE.data.long <- pivot_longer(SPACE.data, cols=Q76_1:Q54, names_to="Question", values_to="Response")
+
+#relevel response column
+SPACE.data.long$Response <- factor(SPACE.data.long$Response, levels=c(0,1))
+
+#plot by subsets
+
+SPACE.data.long.1 <- subset(SPACE.data.long, SPACE.data.long$Response=="1")
+SPACE.data.long.1A <- subset(SPACE.data.long.1, SPACE.data.long.1$trust.group=="A")
+SPACE.data.long.1B <- subset(SPACE.data.long.1, SPACE.data.long.1$trust.group=="B")
+SPACE.data.long.1C <- subset(SPACE.data.long.1, SPACE.data.long.1$trust.group=="C")
+
+ggplot(subset(SPACE.data.long.1A, Question=="Q76_1" | Question=="Q76_2"| Question=="Q76_3" | Question=="Q76_4" | Question=="Q76_5"| Question=="Q76_6" | Question=="Q76_7"| Question=="Q76_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, low trusters",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q76_1" = "#EDF3FB", "Q76_2" = "grey", "Q76_3" = "black", "Q76_4" = "red", "Q76_5" = "green", "Q76_6" = "yellow", "Q76_7" = "blue", "Q76_8" = "orange"),
+                    labels = c("Q76_1" = "Intentions", "Q76_2" = "Skilled", "Q76_3" = "Responsible", "Q76_4" = "Reliable", "Q76_5" = "Non-exploitative", "Q76_6" = "Transparent", "Q76_7" = "Shared values", "Q76_8" = "Familiar"))
+
+ggplot(subset(SPACE.data.long.1B, Question=="Q76_1" | Question=="Q76_2"| Question=="Q76_3" | Question=="Q76_4" | Question=="Q76_5"| Question=="Q76_6" | Question=="Q76_7"| Question=="Q76_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, medium trusters",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q76_1" = "#EDF3FB", "Q76_2" = "grey", "Q76_3" = "black", "Q76_4" = "red", "Q76_5" = "green", "Q76_6" = "yellow", "Q76_7" = "blue", "Q76_8" = "orange"),
+                    labels = c("Q76_1" = "Intentions", "Q76_2" = "Skilled", "Q76_3" = "Responsible", "Q76_4" = "Reliable", "Q76_5" = "Non-exploitative", "Q76_6" = "Transparent", "Q76_7" = "Shared values", "Q76_8" = "Familiar"))
+
+ggplot(subset(SPACE.data.long.1C, Question=="Q76_1" | Question=="Q76_2"| Question=="Q76_3" | Question=="Q76_4" | Question=="Q76_5"| Question=="Q76_6" | Question=="Q76_7"| Question=="Q76_8"), aes(x = Response, fill = Question)) +
+  geom_bar(position = "dodge", color = "black") +
+  theme_minimal() +
+  labs(title = "Reasons for trust, high trusters",
+       x = "",
+       y = "Frequency",
+       fill = "Reason") +
+  scale_fill_manual(values = c("Q76_1" = "#EDF3FB", "Q76_2" = "grey", "Q76_3" = "black", "Q76_4" = "red", "Q76_5" = "green", "Q76_6" = "yellow", "Q76_7" = "blue", "Q76_8" = "orange"),
+                    labels = c("Q76_1" = "Intentions", "Q76_2" = "Skilled", "Q76_3" = "Responsible", "Q76_4" = "Reliable", "Q76_5" = "Non-exploitative", "Q76_6" = "Transparent", "Q76_7" = "Shared values", "Q76_8" = "Familiar"))
+
+```
+```{r}
+#use of health technologies
+
+trust.wearables.model1 <- brm(
+  formula = Q5 ~ as.numeric(trust.composite),
+  data = SPACE.data,
+  family = bernoulli,
+  prior = set_prior("normal(0, 5)", class = "b")
+    )
+
+summary(trust.wearables.model1)
+```
+```{r}
+
+#plot
+
+ce <- conditional_effects(trust.wearables.model1, effects = "trust.composite")
+
+# Convert the conditional effects to a data frame
+ce_df <- ce$`trust.composite`
+
+# Plot the regression line along with the actual data points
+ggplot() +
+  geom_line(data = ce_df, aes(x = as.numeric(trust.composite), y = estimate__), color = "blue") +
+  geom_ribbon(data = ce_df, aes(x = as.numeric(trust.composite), ymin = lower__, ymax = upper__), alpha = 0.2) +
+  labs(title = "Likelihood of having used a device to track health or well-being",
+       x = "Trust Composite Score (1-15)",
+       y = "Likelihood")
+
+```
+```{r}
+#explore by trust subtype
+
+#tech companies
+
+trust.wearables.model2 <- brm(
+  formula = Q5 ~ as.numeric(Q90),
+  data = SPACE.data,
+  family = bernoulli,
+  prior = set_prior("normal(0, 5)", class = "b")
+    )
+
+#family
+
+trust.wearables.model3 <- brm(
+  formula = Q5 ~ as.numeric(Q100.0),
+  data = SPACE.data,
+  family = bernoulli,
+  prior = set_prior("normal(0, 5)", class = "b")
+    )
+
+#NHS
+
+trust.wearables.model4 <- brm(
+  formula = Q5 ~ as.numeric(Q89),
+  data = SPACE.data,
+  family = bernoulli,
+  prior = set_prior("normal(0, 5)", class = "b")
+    )
+
+summary(trust.wearables.model2)
+summary(trust.wearables.model3)
+summary(trust.wearables.model4)
+
+```
+
+```{r}
+
+#is trust in tech companies or the NHS a predictor of potential smart device use for health reasons?
+
+SPACE.data$device.composite <- as.numeric(SPACE.data$Q40)+as.numeric(SPACE.data$Q41)+as.numeric(SPACE.data$Q42)+as.numeric(SPACE.data$Q86)+as.numeric(SPACE.data$Q44)+as.numeric(SPACE.data$Q45)+as.numeric(SPACE.data$Q46)+as.numeric(SPACE.data$Q87)
+
+summary(SPACE.data$device.composite)
+
+```
+
+```{r}
+
+#tech companies
+
+trust.devices.model1 <- brm(
+  formula = device.composite ~ as.numeric(Q90),
+  data = SPACE.data,
+  family = gaussian,
+  prior = set_prior("normal(0, 5)", class = "b")
+    )
+
+#NHS
+
+trust.devices.model2 <- brm(
+  formula = device.composite ~ as.numeric(Q89),
+  data = SPACE.data,
+  family = gaussian,
+  prior = set_prior("normal(0, 5)", class = "b")
+)
+
+summary(trust.devices.model1)
+summary(trust.devices.model2)
+
+```
+
+```{r}
+#plotting
+
+#plot
+
+ce <- conditional_effects(trust.devices.model1, effects = "Q90")
+
+# Convert the conditional effects to a data frame
+ce_df <- ce$`Q90`
+
+ggplot() +
+  geom_line(data = ce_df, aes(x = as.numeric(Q90), y = estimate__), color = "blue") +
+  geom_ribbon(data = ce_df, aes(x = as.numeric(Q90), ymin = lower__, ymax = upper__), alpha = 0.2) +
+  labs(title = "Willingness to use a device for health tracking: composite",
+       x = "Trust in tech companies (1-5)",
+       y = "Composite willingness")
+
+ce <- conditional_effects(trust.devices.model2, effects = "Q89")
+
+# Convert the conditional effects to a data frame
+ce_df <- ce$`Q89`
+
+ggplot() +
+  geom_line(data = ce_df, aes(x = as.numeric(Q89), y = estimate__), color = "blue") +
+  geom_ribbon(data = ce_df, aes(x = as.numeric(Q89), ymin = lower__, ymax = upper__), alpha = 0.2) +
+  labs(title = "Willingness to use a device for health tracking: composite",
+       x = "Trust in the NHS (1-5)",
+       y = "Composite willingness")
+
+
+```
+```{r}
+#cluster analysis
+
+#general
+
+SPACE.general.trust.cluster.df <- cbind(SPACE.data$Participant, SPACE.data$Q76_1, SPACE.data$Q76_2, SPACE.data$Q76_3, SPACE.data$Q76_4, SPACE.data$Q76_5, SPACE.data$Q76_6, SPACE.data$Q76_7, SPACE.data$Q76_8) 
+SPACE.general.trust.cluster.df <- as.data.frame(SPACE.general.trust.cluster.df)
+colnames(SPACE.general.trust.cluster.df) <- c("Participant","Intentions","Skilled","Responsible","Reliable","Non-exploitative","Transparent","Shared values","Familiar")
+SPACE.general.trust.cluster.df[is.na(SPACE.general.trust.cluster.df)==TRUE] <- 0
+
+general.trust.cluster <- kmeans(SPACE.general.trust.cluster.df[,-1], centers=3)
+cluster <- factor(c(1,2,3))
+general.trust.cluster.long <- melt(cbind(cluster,as.data.frame(general.trust.cluster$centers)), id.vars="cluster")
+
+
+ggplot(general.trust.cluster.long, aes(x = variable, y = cluster, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  labs(title = "General trust clusters", x = "", y = "Cluster") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(aes(label = round(value, 2)), color = "white", size = 3) 
+
+#family
+
+SPACE.family.trust.cluster.df <- cbind(SPACE.data$Participant, SPACE.data$Q100_1, SPACE.data$Q100_2, SPACE.data$Q100_3, SPACE.data$Q100_4, SPACE.data$Q100_5, SPACE.data$Q100_6, SPACE.data$Q100_7, SPACE.data$Q100_8) 
+SPACE.family.trust.cluster.df <- as.data.frame(SPACE.family.trust.cluster.df)
+colnames(SPACE.family.trust.cluster.df) <- c("Participant","Intentions","Skilled","Responsible","Reliable","Non-exploitative","Transparent","Shared values","Familiar")
+SPACE.family.trust.cluster.df[is.na(SPACE.family.trust.cluster.df)==TRUE] <- 0
+
+family.trust.cluster <- kmeans(SPACE.family.trust.cluster.df[,-1], centers=3)
+cluster <- factor(c(1,2,3))
+family.trust.cluster.long <- melt(cbind(cluster,as.data.frame(family.trust.cluster$centers)), id.vars="cluster")
+
+
+ggplot(family.trust.cluster.long, aes(x = variable, y = cluster, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  labs(title = "Family trust clusters", x = "", y = "Cluster") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(aes(label = round(value, 2)), color = "white", size = 3) 
+
+#NHS
+
+SPACE.NHS.trust.cluster.df <- cbind(SPACE.data$Participant, SPACE.data$Q101_1, SPACE.data$Q101_2, SPACE.data$Q101_3, SPACE.data$Q101_4, SPACE.data$Q101_5, SPACE.data$Q101_6, SPACE.data$Q101_7, SPACE.data$Q101_8) 
+SPACE.NHS.trust.cluster.df <- as.data.frame(SPACE.NHS.trust.cluster.df)
+colnames(SPACE.NHS.trust.cluster.df) <- c("Participant","Intentions","Skilled","Responsible","Reliable","Non-exploitative","Transparent","Shared values","Familiar")
+SPACE.NHS.trust.cluster.df[is.na(SPACE.NHS.trust.cluster.df)==TRUE] <- 0
+
+NHS.trust.cluster <- kmeans(SPACE.NHS.trust.cluster.df[,-1], centers=3)
+cluster <- factor(c(1,2,3))
+NHS.trust.cluster.long <- melt(cbind(cluster,as.data.frame(NHS.trust.cluster$centers)), id.vars="cluster")
+
+
+ggplot(NHS.trust.cluster.long, aes(x = variable, y = cluster, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  labs(title = "NHS trust clusters", x = "", y = "Cluster") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(aes(label = round(value, 2)), color = "white", size = 3) 
+
+#tech companies
+
+SPACE.tech.trust.cluster.df <- cbind(SPACE.data$Participant, SPACE.data$Q94_1, SPACE.data$Q94_2, SPACE.data$Q94_3, SPACE.data$Q94_4, SPACE.data$Q94_5, SPACE.data$Q94_6, SPACE.data$Q94_7, SPACE.data$Q94_8) 
+SPACE.tech.trust.cluster.df <- as.data.frame(SPACE.tech.trust.cluster.df)
+colnames(SPACE.tech.trust.cluster.df) <- c("Participant","Intentions","Skilled","Responsible","Reliable","Non-exploitative","Transparent","Shared values","Familiar")
+SPACE.tech.trust.cluster.df[is.na(SPACE.tech.trust.cluster.df)==TRUE] <- 0
+
+tech.trust.cluster <- kmeans(SPACE.tech.trust.cluster.df[,-1], centers=3)
+cluster <- factor(c(1,2,3))
+tech.trust.cluster.long <- melt(cbind(cluster,as.data.frame(tech.trust.cluster$centers)), id.vars="cluster")
+
+
+ggplot(tech.trust.cluster.long, aes(x = variable, y = cluster, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_minimal() +
+  labs(title = "Technology company trust clusters", x = "", y = "Cluster") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  geom_text(aes(label = round(value, 2)), color = "white", size = 3) 
+
+
+```
+
